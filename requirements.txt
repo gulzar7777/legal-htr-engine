@@ -1,0 +1,22 @@
+# --- Deep Learning & Modeling ---
+torch>=2.2.0
+torchvision>=0.17.0
+transformers>=4.40.0         # TrOCR, VisionEncoderDecoder, LayoutLMv3
+accelerate>=0.29.0           # Efficient multi-precision inference / training
+evaluate>=0.4.1
+jiwer>=3.0.3                 # CER (Character Error Rate) & WER computation
+
+# --- Computer Vision & Preprocessing ---
+opencv-python-headless>=4.9.0.80  # Headless mode prevents X11 dependency crashes
+scikit-image>=0.22.0              # Sauvola & Niblack adaptive thresholding
+pillow>=10.2.0
+
+# --- API & Serialization ---
+fastapi>=0.110.0
+uvicorn[standard]>=0.28.0
+pydantic>=2.6.0
+python-multipart>=0.0.9      # Multipart file uploads for scanned images
+
+# --- Vector & Database Drivers ---
+psycopg2-binary>=2.9.9       # PostgreSQL driver
+pgvector>=0.2.5              # Native Python vector binding
