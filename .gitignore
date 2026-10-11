@@ -5,29 +5,24 @@ __pycache__/
 .venv/
 env/
 venv/
+*.egg-info/
 
-# Environment Variables & Secrets
-.env
-*.env.local
-
-# Large Datasets & Model Binaries (Managed by DVC)
-/data/raw/*
-/data/processed/*
+# Large Datasets & Model Binaries (tracked by DVC)
+/data/*
+!/data/.gitkeep
 /models/*
-!/data/raw/.gitkeep
-!/data/processed/.gitkeep
 !/models/.gitkeep
 
 # DVC Internal Storage Cache
 .dvc/cache
 .dvc/tmp
 
-# IDEs & System Artifacts
-.vscode/
-.idea/
+# Environment & Secrets
+.env
+*.env.local
+
+# Database Volumes & System Dumps
+postgres_data/
 .DS_Store
 *.swp
 *~
-
-# Database Volumes
-postgres_data/
