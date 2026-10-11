@@ -1,3 +1,33 @@
-/data
-/models
+# Python & Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
 .venv/
+env/
+venv/
+
+# Environment Variables & Secrets
+.env
+*.env.local
+
+# Large Datasets & Model Binaries (Managed by DVC)
+/data/raw/*
+/data/processed/*
+/models/*
+!/data/raw/.gitkeep
+!/data/processed/.gitkeep
+!/models/.gitkeep
+
+# DVC Internal Storage Cache
+.dvc/cache
+.dvc/tmp
+
+# IDEs & System Artifacts
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*~
+
+# Database Volumes
+postgres_data/

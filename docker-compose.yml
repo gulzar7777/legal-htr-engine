@@ -1,0 +1,48 @@
+services:
+  htr-engine:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.htr
+    container_name: legal-htr-engine
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data
+      - ./src:/app/src
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - DATABASE_URL=postgresql://htr_user:htr_password@db:5432/legal_records
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: legal-htr-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: htr_user
+      POSTGRES_PASSWORD: htr_password
+      POSTGRES_DB: legal_records
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U htr_user -d legal_records"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
+    driver: local
