@@ -1,6 +1,4 @@
-from pathlib import Path
-
-README_CONTENT = r"""# Legal-HTR: Document AI & Search Engine for Legacy Legal Records
+# Legal-HTR: Document AI & Search Engine for Legacy Legal Records
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![PyTorch 2.5](https://img.shields.io/badge/PyTorch-2.5-EE4C2C.svg)](https://pytorch.org/)
@@ -39,7 +37,25 @@ An end-to-end deep learning Document AI pipeline engineered to restore, transcri
             ▼
 [Stage 5: Hybrid Database Indexing]
    └── PostgreSQL: Lexical BM25 (tsvector GIN) + Dense Vectors (pgvector HNSW)
-Hardware & Runtime SpecificationsHost Operating System: Arch Linux (Kernel $\ge 6.x$)Target Hardware Envelope: NVIDIA GeForce GTX 1650 (4 GB GDDR5/GDDR6 VRAM, CUDA Compute 7.5)Container Infrastructure: Docker Engine with NVIDIA Container Toolkit & Container Device Interface (CDI)Memory Footprint: FP16 mixed-precision batch inference calibrated for $< 3.0\text{ GB}$ peak VRAMRepository StructurePlaintextlegal-htr-engine/
+
+## Hardware & Runtime Specifications
+
+- **Host Operating System:** Arch Linux (Kernel $\ge 6.x$)
+    
+- **Target Hardware Envelope:** NVIDIA GeForce GTX 1650 (4 GB GDDR5/GDDR6 VRAM, CUDA Compute 7.5)
+    
+- **Container Infrastructure:** Docker Engine with NVIDIA Container Toolkit & Container Device Interface (CDI)
+    
+- **Memory Footprint:** FP16 mixed-precision batch inference calibrated for $< 3.0\text{ GB}$ peak VRAM
+    
+
+## Repository Structure
+
+Plaintext
+
+```
+
+legal-htr-engine/
 ├── docker/
 │   └── Dockerfile.htr             # PyTorch 2.5 + CUDA 12.4 runtime container
 ├── docker-compose.yml             # HTR inference and PostgreSQL/pgvector services
@@ -58,20 +74,93 @@ Hardware & Runtime SpecificationsHost Operating System: Arch Linux (Kernel $\ge 
 │   ├── engine/                    # TrOCR sequence-to-sequence inference & metrics
 │   └── postprocessing/            # Legal lexicon correction & Legal-BERT NER
 └── docs/                          # Obsidian vault technical notes & literature survey
-Getting Started1. Host Environment & GPU VerificationEnsure the NVIDIA Container Toolkit and CDI specification are properly configured:Bashsudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
+```
+
+## Getting Started
+
+### 1. Host Environment & GPU Verification
+
+Ensure the NVIDIA Container Toolkit and CDI specification are properly configured:
+
+Bash
+
+```
+sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
 ./verify_setup.sh
-2. Pull Datasets and Model Weights (DVC)Datasets and model weights are tracked via DVC to keep Git history lightweight:Bashdvc pull
-3. Launch Docker ServicesSpin up the HTR inference engine and the PostgreSQL/pgvector database:Bashdocker compose up -d --build
-4. Running the Pipeline via CLIStep A — Document Restoration & Binarization:Bashpython src/preprocessing/binarize.py \
+```
+
+### 2. Pull Datasets and Model Weights (DVC)
+
+Datasets and model weights are tracked via DVC to keep Git history lightweight:
+
+Bash
+
+```
+dvc pull
+```
+
+### 3. Launch Docker Services
+
+Spin up the HTR inference engine and the PostgreSQL/pgvector database:
+
+Bash
+
+```
+docker compose up -d --build
+```
+
+### 4. Running the Pipeline via CLI
+
+**Step A — Document Restoration & Binarization:**
+
+Bash
+
+```
+python src/preprocessing/binarize.py \
   --input data/raw/sample_folio.png \
   --output data/processed/sample_cleaned.png \
   --window-size 25 \
   --k 0.2
-Step B — Line Segmentation:Bashpython src/preprocessing/line_segment.py \
+```
+
+**Step B — Line Segmentation:**
+
+Bash
+
+```
+python src/preprocessing/line_segment.py \
   --input data/processed/sample_cleaned.png \
   --output-dir data/processed/lines/
-Step C — Vision Transformer Inference:Bashpython src/engine/model.py \
+```
+
+**Step C — Vision Transformer Inference:**
+
+Bash
+
+```
+python src/engine/model.py \
   --input-dir data/processed/lines/ \
   --fp16 \
   --batch-size 4
-Benchmark TargetsMetricTarget BaselineStatusCharacter Error Rate (CER)$< 12.0\%$Validation pipeline in progressWord Error Rate (WER)$< 25.0\%$Validation pipeline in progressLine Inference Latency$< 350\text{ ms / line}$$\approx 280\text{ ms}$ (FP16 on GTX 1650)Peak VRAM Utilization$< 3.5\text{ GB}$$2.85\text{ GB}$Academic ReferencesCoquenet, D., Chatelain, C., & Paquet, T. (2023). End-to-End Handwritten Text Recognition with Attention Networks. IEEE TPAMI, 45(9), 10698–10710.Li, M., Lv, T., Chen, J., et al. (2023). TrOCR: Transformer-based Optical Character Recognition with Pre-trained Models. AAAI 2023, 37(11), 13094–13102.Graves, A., Liwicki, M., Fernández, S., et al. (2009). A Novel Connectionist System for Unconstrained Handwriting Recognition. IEEE TPAMI, 31(5), 855–868.Sauvola, J., & Pietikäinen, M. (2000). Adaptive document image binarization. Pattern Recognition, 33(2), 225–236.Chalkidis, I., Fergadiotis, M., Malakasiotis, P., et al. (2020). LEGAL-BERT: The Muppets straight out of Law School. Findings of EMNLP 2020, 2898–2904."""def generate_readme(output_path: str = "README.md") -> None:target = Path(output_path)target.write_text(README_CONTENT.strip() + "\n", encoding="utf-8")print(f"Successfully written {len(README_CONTENT.encode('utf-8'))} bytes to {target.resolve()}")if name == "main":generate_readme()
+```
+
+## Benchmark Targets
+
+|**Metric**|**Target Baseline**|**Status**|
+|---|---|---|
+|**Character Error Rate (CER)**|$< 12.0\%$|Validation pipeline in progress|
+|**Word Error Rate (WER)**|$< 25.0\%$|Validation pipeline in progress|
+|**Line Inference Latency**|$< 350\text{ ms / line}$|$\approx 280\text{ ms}$ (FP16 on GTX 1650)|
+|**Peak VRAM Utilization**|$< 3.5\text{ GB}$|$2.85\text{ GB}$|
+
+## Academic References
+
+1. **Coquenet, D., Chatelain, C., & Paquet, T. (2023).** _End-to-End Handwritten Text Recognition with Attention Networks._ **IEEE TPAMI**, 45(9), 10698–10710.
+    
+2. **Li, M., Lv, T., Chen, J., et al. (2023).** _TrOCR: Transformer-based Optical Character Recognition with Pre-trained Models._ **AAAI 2023**, 37(11), 13094–13102.
+    
+3. **Graves, A., Liwicki, M., Fernández, S., et al. (2009).** _A Novel Connectionist System for Unconstrained Handwriting Recognition._ **IEEE TPAMI**, 31(5), 855–868.
+    
+4. **Sauvola, J., & Pietikäinen, M. (2000).** _Adaptive document image binarization._ **Pattern Recognition**, 33(2), 225–236.
+    
+5. **Chalkidis, I., Fergadiotis, M., Malakasiotis, P., et al. (2020).** _LEGAL-BERT: The Muppets straight out of Law School._ **Findings of EMNLP 2020**, 2898–2904.
