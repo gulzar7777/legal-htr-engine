@@ -64,7 +64,6 @@ class TrOCREngine:
         generated_ids = self.model.generate(
             pixel_values,
             max_new_tokens=64,
-            early_stopping=True,
             num_beams=1,  # Greedy search for maximum throughput
             no_repeat_ngram_size=3
         )
