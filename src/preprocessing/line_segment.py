@@ -1,82 +1,126 @@
+import argparse
 from pathlib import Path
-from typing import List, Tuple
 import cv2
 import numpy as np
 
 
-def extract_line_crops(
-    binary_image: np.ndarray,
-    min_line_height: int = 20,
-    padding: int = 5
-) -> List[Tuple[np.ndarray, Tuple[int, int, int, int]]]:
+def horizontal_projection(binary_img: np.ndarray) -> np.ndarray:
     """
-    Segments a binarized document page into individual text-line crops using
-    Horizontal Projection Profiling (HPP).
-    
-    Returns a list of tuples: (cropped_line_image, (x, y, w, h))
+    Computes horizontal projection profile of foreground pixels.
+    Assumes background is 255 (white) and ink is 0 (black).
     """
-    # Foreground text is black (0), background is white (255)
-    # Invert so text pixels have positive weight
-    inverted = 255 - binary_image
-    
-    # Compute horizontal projection profile (sum across rows)
-    proj = np.sum(inverted, axis=1) / 255.0
+    # Invert so ink = 1, background = 0
+    inv = (binary_img == 0).astype(np.uint8)
+    return np.sum(inv, axis=1)
 
-    # Threshold row density to detect text presence
-    threshold = np.mean(proj) * 0.15
+
+def smooth_profile(profile: np.ndarray, kernel_size: int = 5) -> np.ndarray:
+    """Smooths 1D projection array to eliminate noise from ascenders/descenders."""
+    kernel = np.ones(kernel_size) / kernel_size
+    return np.convolve(profile, kernel, mode="same")
+
+
+def extract_line_boundaries(
+    profile: np.ndarray,
+    threshold_ratio: float = 0.15,
+    min_line_height: int = 18,
+    padding: int = 4,
+    img_height: int = 0
+):
+    """
+    Finds upper and lower line cut-points based on profile valleys.
+    """
+    # Dynamic valley threshold based on mean foreground density
+    threshold = np.mean(profile) * threshold_ratio
     in_line = False
     start_y = 0
-    line_slices = []
+    bounds = []
 
-    for y, count in enumerate(proj):
-        if not in_line and count > threshold:
+    for y, count in enumerate(profile):
+        if count > threshold and not in_line:
             in_line = True
             start_y = y
-        elif in_line and count <= threshold:
+        elif count <= threshold and in_line:
             in_line = False
-            if (y - start_y) >= min_line_height:
-                line_slices.append((start_y, y))
+            end_y = y
+            if (end_y - start_y) >= min_line_height:
+                # Add vertical safety margin without clipping past bounds
+                y1 = max(0, start_y - padding)
+                y2 = min(img_height, end_y + padding) if img_height > 0 else (end_y + padding)
+                bounds.append((y1, y2))
 
-    if in_line and (len(proj) - start_y) >= min_line_height:
-        line_slices.append((start_y, len(proj)))
+    # Catch line extending to bottom edge
+    if in_line:
+        end_y = len(profile)
+        if (end_y - start_y) >= min_line_height:
+            y1 = max(0, start_y - padding)
+            y2 = min(img_height, end_y + padding) if img_height > 0 else end_y
+            bounds.append((y1, y2))
 
-    h_img, w_img = binary_image.shape[:2]
-    line_crops = []
-
-    for y1, y2 in line_slices:
-        y1_pad = max(0, y1 - padding)
-        y2_pad = min(h_img, y2 + padding)
-        crop = binary_image[y1_pad:y2_pad, 0:w_img]
-        line_crops.append((crop, (0, y1_pad, w_img, y2_pad - y1_pad)))
-
-    return line_crops
+    return bounds
 
 
-def process_and_save_lines(processed_image_path: Path, output_dir: Path) -> int:
-    """
-    Reads a processed binary document, segments lines, and saves them to output_dir.
-    """
-    image = cv2.imread(str(processed_image_path), cv2.IMREAD_GRAYSCALE)
-    if image is None:
-        raise FileNotFoundError(f"Image not found at {processed_image_path}")
+def segment_document_lines(
+    image_path: str,
+    output_dir: str,
+    threshold_ratio: float = 0.15,
+    min_height: int = 18,
+    padding: int = 4
+) -> list:
+    inp = Path(image_path)
+    out_dir = Path(output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
 
-    crops = extract_line_crops(image)
-    output_dir.mkdir(parents=True, exist_ok=True)
+    img = cv2.imread(str(inp), cv2.IMREAD_GRAYSCALE)
+    if img is None:
+        raise FileNotFoundError(f"Failed to read image at: {image_path}")
 
-    for idx, (crop, bbox) in enumerate(crops):
-        out_file = output_dir / f"line_{idx:03d}.png"
-        cv2.imwrite(str(out_file), crop)
+    # Ensure binary input (0 and 255)
+    if len(np.unique(img)) > 2:
+        _, img = cv2.threshold(img, 127, 255, cv2.THRESH_BINARY)
 
-    return len(crops)
+    h, w = img.shape
+    profile = horizontal_projection(img)
+    smoothed = smooth_profile(profile, kernel_size=7)
+    bounds = extract_line_boundaries(
+        smoothed,
+        threshold_ratio=threshold_ratio,
+        min_line_height=min_height,
+        padding=padding,
+        img_height=h
+    )
+
+    saved_paths = []
+    for idx, (y1, y2) in enumerate(bounds):
+        line_crop = img[y1:y2, 0:w]
+        crop_name = out_dir / f"line_{idx:03d}.png"
+        cv2.imwrite(str(crop_name), line_crop)
+        saved_paths.append(str(crop_name))
+
+    print(f"[SUCCESS] Segmented {len(saved_paths)} lines into: {out_dir}")
+    return saved_paths
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Horizontal Projection Profiling (HPP) Line Segmenter.")
+    parser.add_argument("pos_input", nargs="?", default=None, help="Input binary image path")
+    parser.add_argument("pos_output_dir", nargs="?", default=None, help="Output directory for line crops")
+    parser.add_argument("-i", "--input", dest="opt_input", help="Input binary image path")
+    parser.add_argument("-o", "--output-dir", dest="opt_output", help="Output line crops directory")
+    parser.add_argument("--threshold-ratio", type=float, default=0.15, help="Valley cut-point ratio relative to mean")
+    parser.add_argument("--min-height", type=int, default=18, help="Minimum line height in pixels")
+    parser.add_argument("--padding", type=int, default=4, help="Vertical boundary padding in pixels")
+    args = parser.parse_args()
+
+    inp = args.opt_input or args.pos_input
+    out = args.opt_output or args.pos_output_dir
+
+    if not inp or not out:
+        parser.error("Both input image and output directory must be specified.")
+
+    return inp, out, args.threshold_ratio, args.min_height, args.padding
 
 
 if __name__ == "__main__":
-    import sys
-    if len(sys.argv) < 3:
-        print("Usage: python line_segment.py <input_cleaned_image> <output_crops_dir>")
-        sys.exit(1)
-
-    inp = Path(sys.argv[1])
-    out = Path(sys.argv[2])
-    count = process_and_save_lines(inp, out)
-    print(f"Extracted {count} text lines into: {out}")
+    inp, out, thresh, m_h, pad = parse_args()
+    segment_document_lines(inp, out, threshold_ratio=thresh, min_height=m_h, padding=pad)
