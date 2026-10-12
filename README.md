@@ -37,24 +37,22 @@ An end-to-end deep learning Document AI pipeline engineered to restore, transcri
             ▼
 [Stage 5: Hybrid Database Indexing]
    └── PostgreSQL: Lexical BM25 (tsvector GIN) + Dense Vectors (pgvector HNSW)
+```
+
+---
 
 ## Hardware & Runtime Specifications
 
-- **Host Operating System:** Arch Linux (Kernel $\ge 6.x$)
-    
+- **Host Operating System:** Arch Linux (Kernel >= 6.x)
 - **Target Hardware Envelope:** NVIDIA GeForce GTX 1650 (4 GB GDDR5/GDDR6 VRAM, CUDA Compute 7.5)
-    
 - **Container Infrastructure:** Docker Engine with NVIDIA Container Toolkit & Container Device Interface (CDI)
-    
-- **Memory Footprint:** FP16 mixed-precision batch inference calibrated for $< 3.0\text{ GB}$ peak VRAM
-    
+- **Memory Footprint:** FP16 mixed-precision batch inference calibrated for < 3.0 GB peak VRAM
+
+---
 
 ## Repository Structure
 
-Plaintext
-
-```
-
+```text
 legal-htr-engine/
 ├── docker/
 │   └── Dockerfile.htr             # PyTorch 2.5 + CUDA 12.4 runtime container
@@ -76,15 +74,15 @@ legal-htr-engine/
 └── docs/                          # Obsidian vault technical notes & literature survey
 ```
 
+---
+
 ## Getting Started
 
 ### 1. Host Environment & GPU Verification
 
 Ensure the NVIDIA Container Toolkit and CDI specification are properly configured:
 
-Bash
-
-```
+```bash
 sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
 ./verify_setup.sh
 ```
@@ -93,9 +91,7 @@ sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
 
 Datasets and model weights are tracked via DVC to keep Git history lightweight:
 
-Bash
-
-```
+```bash
 dvc pull
 ```
 
@@ -103,19 +99,14 @@ dvc pull
 
 Spin up the HTR inference engine and the PostgreSQL/pgvector database:
 
-Bash
-
-```
+```bash
 docker compose up -d --build
 ```
 
 ### 4. Running the Pipeline via CLI
 
 **Step A — Document Restoration & Binarization:**
-
-Bash
-
-```
+```bash
 python src/preprocessing/binarize.py \
   --input data/raw/sample_folio.png \
   --output data/processed/sample_cleaned.png \
@@ -124,43 +115,37 @@ python src/preprocessing/binarize.py \
 ```
 
 **Step B — Line Segmentation:**
-
-Bash
-
-```
+```bash
 python src/preprocessing/line_segment.py \
   --input data/processed/sample_cleaned.png \
   --output-dir data/processed/lines/
 ```
 
 **Step C — Vision Transformer Inference:**
-
-Bash
-
-```
+```bash
 python src/engine/model.py \
   --input-dir data/processed/lines/ \
   --fp16 \
   --batch-size 4
 ```
 
+---
+
 ## Benchmark Targets
 
-|**Metric**|**Target Baseline**|**Status**|
-|---|---|---|
-|**Character Error Rate (CER)**|$< 12.0\%$|Validation pipeline in progress|
-|**Word Error Rate (WER)**|$< 25.0\%$|Validation pipeline in progress|
-|**Line Inference Latency**|$< 350\text{ ms / line}$|$\approx 280\text{ ms}$ (FP16 on GTX 1650)|
-|**Peak VRAM Utilization**|$< 3.5\text{ GB}$|$2.85\text{ GB}$|
+| Metric | Target Baseline | Status |
+| :--- | :--- | :--- |
+| **Character Error Rate (CER)** | < 12.0% | Validation pipeline in progress |
+| **Word Error Rate (WER)** | < 25.0% | Validation pipeline in progress |
+| **Line Inference Latency** | < 350 ms / line | ~280 ms (FP16 on GTX 1650) |
+| **Peak VRAM Utilization** | < 3.5 GB | 2.85 GB |
+
+---
 
 ## Academic References
 
-1. **Coquenet, D., Chatelain, C., & Paquet, T. (2023).** _End-to-End Handwritten Text Recognition with Attention Networks._ **IEEE TPAMI**, 45(9), 10698–10710.
-    
-2. **Li, M., Lv, T., Chen, J., et al. (2023).** _TrOCR: Transformer-based Optical Character Recognition with Pre-trained Models._ **AAAI 2023**, 37(11), 13094–13102.
-    
-3. **Graves, A., Liwicki, M., Fernández, S., et al. (2009).** _A Novel Connectionist System for Unconstrained Handwriting Recognition._ **IEEE TPAMI**, 31(5), 855–868.
-    
-4. **Sauvola, J., & Pietikäinen, M. (2000).** _Adaptive document image binarization._ **Pattern Recognition**, 33(2), 225–236.
-    
-5. **Chalkidis, I., Fergadiotis, M., Malakasiotis, P., et al. (2020).** _LEGAL-BERT: The Muppets straight out of Law School._ **Findings of EMNLP 2020**, 2898–2904.
+1. **Coquenet, D., Chatelain, C., & Paquet, T. (2023).** *End-to-End Handwritten Text Recognition with Attention Networks.* **IEEE Transactions on Pattern Analysis and Machine Intelligence (TPAMI)**, 45(9), 10698–10710.
+2. **Li, M., Lv, T., Chen, J., et al. (2023).** *TrOCR: Transformer-based Optical Character Recognition with Pre-trained Models.* **AAAI 2023**, 37(11), 13094–13102.
+3. **Graves, A., Liwicki, M., Fernández, S., et al. (2009).** *A Novel Connectionist System for Unconstrained Handwriting Recognition.* **IEEE Transactions on Pattern Analysis and Machine Intelligence (TPAMI)**, 31(5), 855–868.
+4. **Sauvola, J., & Pietikäinen, M. (2000).** *Adaptive document image binarization.* **Pattern Recognition**, 33(2), 225–236.
+5. **Chalkidis, I., Fergadiotis, M., Malakasiotis, P., et al. (2020).** *LEGAL-BERT: The Muppets straight out of Law School.* **Findings of EMNLP 2020**, 2898–2904.
