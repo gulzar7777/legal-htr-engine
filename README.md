@@ -71,7 +71,7 @@ legal-htr-engine/
 │   ├── preprocessing/             # Sauvola binarization & HPP line segmentation
 │   ├── engine/                    # TrOCR sequence-to-sequence inference & metrics
 │   └── postprocessing/            # Legal lexicon correction & Legal-BERT NER
-└── docs/                          # Obsidian vault technical notes & literature survey
+└── docs/                          
 ```
 
 ---
